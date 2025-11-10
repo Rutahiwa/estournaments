@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-i%g6amda-%i2i%neql)gk_lor#jsz8q^uwf7(ew3n_nv$y06we
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'testserver']
 
 
 # Application definition
@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'users',
+    'tournaments'
 ]
 
 AUTH_USER_MODEL = 'users.User'
