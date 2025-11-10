@@ -28,3 +28,20 @@ class Tournament(models.Model):
         if self.registration_deadline and timezone.now() > self.registration_deadline:
             return False
         return True
+
+# New Participant model to track tournament sign-ups by users
+class Participant(models.Model):
+    """
+    Participant links a user to a tournament indicating that the user joined that tournament.
+    Enforces unique registration per user+tournament.
+    """
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name='participants')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='tournament_participations')
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('tournament', 'user')
+        ordering = ['-joined_at']
+
+    def __str__(self):
+        return f"{self.user} -> {self.tournament}"
