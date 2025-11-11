@@ -3,7 +3,8 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import Tournament
+from tournaments.models import Tournament
+from django.utils import timezone
 
 # Basic API tests for tournaments: create/list/retrieve/update/delete and permissions
 class TournamentAPITests(APITestCase):
@@ -12,9 +13,11 @@ class TournamentAPITests(APITestCase):
         # organizer and another user
         self.organizer = User.objects.create_user(email='org@example.com', username='organizer', password='TestPass123!')
         self.other = User.objects.create_user(email='other@example.com', username='other', password='TestPass123!')
+
         # helper for access token
         def token_for(user):
             return str(RefreshToken.for_user(user).access_token)
+
         self.org_token = token_for(self.organizer)
         self.other_token = token_for(self.other)
         self.list_create_url = reverse('tournament-list-create')
@@ -25,9 +28,10 @@ class TournamentAPITests(APITestCase):
         data = {
             "name": "Test Cup",
             "description": "desc",
-            "type": "single_elimination",
-            "status": "registration_open",
-            "max_players": 8
+            "tournament_type": Tournament.TOURNAMENT_TYPE_CUP,
+            "status": Tournament.STATUS_REGISTRATION_OPEN,
+            "max_players": 8,
+            "registration_deadline": timezone.now()
         }
         resp = self.client.post(self.list_create_url, data, format='json')
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
@@ -36,7 +40,12 @@ class TournamentAPITests(APITestCase):
 
     def test_list_and_retrieve_public(self):
         """Anyone can list and retrieve tournaments (public read)."""
-        Tournament.objects.create(name="Public Cup", organizer=self.organizer)
+        Tournament.objects.create(
+            name="Public Cup",
+            organizer=self.organizer,
+            max_players=16,
+            registration_deadline=timezone.now()
+        )
         resp = self.client.get(self.list_create_url)
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         pk = resp.data[0]['id']
@@ -45,7 +54,12 @@ class TournamentAPITests(APITestCase):
 
     def test_only_organizer_can_modify(self):
         """Only organizer may update/delete their tournament."""
-        t = Tournament.objects.create(name="Secure Cup", organizer=self.organizer)
+        t = Tournament.objects.create(
+            name="Secure Cup",
+            organizer=self.organizer,
+            max_players=16,
+            registration_deadline=timezone.now()
+        )
         detail = reverse('tournament-detail', args=[t.id])
 
         # other user cannot modify

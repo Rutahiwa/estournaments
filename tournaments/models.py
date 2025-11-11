@@ -1,17 +1,48 @@
 from django.db import models
-from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.utils import timezone
-from .enums import TournamentType, TournamentStatus
 
-# Tournament model storing core tournament info and organizer relation
+User = get_user_model()
+
 class Tournament(models.Model):
-    name = models.CharField(max_length=200)
-    description = models.TextField(blank=True)
-    type = models.CharField(max_length=32, choices=TournamentType.CHOICES, default=TournamentType.SINGLE_ELIMINATION)
-    status = models.CharField(max_length=32, choices=TournamentStatus.CHOICES, default=TournamentStatus.DRAFT)
-    max_players = models.PositiveIntegerField(default=16)
-    registration_deadline = models.DateTimeField(null=True, blank=True)
-    organizer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='organized_tournaments')
+    """Tournament model with support for Cup (elimination) and League (round-robin) formats."""
+
+    # Tournament types
+    TOURNAMENT_TYPE_CUP = 'cup'
+    TOURNAMENT_TYPE_LEAGUE = 'league'
+    TOURNAMENT_TYPE_CHOICES = [
+        (TOURNAMENT_TYPE_CUP, 'Cup (Single Elimination)'),
+        (TOURNAMENT_TYPE_LEAGUE, 'League (Round-Robin)'),
+    ]
+
+    # Tournament status
+    STATUS_DRAFT = 'draft'
+    STATUS_REGISTRATION_OPEN = 'registration_open'
+    STATUS_IN_PROGRESS = 'in_progress'
+    STATUS_COMPLETED = 'completed'
+    STATUS_CANCELLED = 'cancelled'
+    STATUS_CHOICES = [
+        (STATUS_DRAFT, 'Draft'),
+        (STATUS_REGISTRATION_OPEN, 'Registration Open'),
+        (STATUS_IN_PROGRESS, 'In Progress'),
+        (STATUS_COMPLETED, 'Completed'),
+        (STATUS_CANCELLED, 'Cancelled'),
+    ]
+
+    # Fields
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    organizer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='organized_tournaments')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_DRAFT)
+    tournament_type = models.CharField(
+        max_length=10,
+        choices=TOURNAMENT_TYPE_CHOICES,
+        default=TOURNAMENT_TYPE_CUP,
+        help_text="Cup: Single Elimination | League: Round-Robin"
+    )
+    max_players = models.PositiveIntegerField(default=2)  # Default to avoid NOT NULL errors
+    registration_deadline = models.DateTimeField(default=timezone.now)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -19,29 +50,24 @@ class Tournament(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.name} ({self.get_type_display()})"
+        return f"{self.name} ({self.get_tournament_type_display()})"
 
+    # --- New helper ---
     def is_registration_open(self):
-        """Return True if the tournament is accepting registrations."""
-        if self.status != TournamentStatus.REGISTRATION_OPEN:
-            return False
-        if self.registration_deadline and timezone.now() > self.registration_deadline:
-            return False
-        return True
+        """Check if participants can still register."""
+        now = timezone.now()
+        return self.status == self.STATUS_REGISTRATION_OPEN and now <= self.registration_deadline and self.participants.count() < self.max_players
 
-# New Participant model to track tournament sign-ups by users
+
 class Participant(models.Model):
-    """
-    Participant links a user to a tournament indicating that the user joined that tournament.
-    Enforces unique registration per user+tournament.
-    """
+    """Participant in a tournament."""
     tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name='participants')
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='tournament_participations')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     joined_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ('tournament', 'user')
-        ordering = ['-joined_at']
+        ordering = ['joined_at']
 
     def __str__(self):
-        return f"{self.user} -> {self.tournament}"
+        return f"{self.user.username} -> {self.tournament.name} ({self.tournament.get_tournament_type_display()})"

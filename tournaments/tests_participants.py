@@ -20,7 +20,8 @@ class ParticipantAPITests(APITestCase):
         self.tournament = Tournament.objects.create(
             name="Open Cup",
             organizer=self.user,
-            status='registration_open',
+            status=Tournament.STATUS_REGISTRATION_OPEN,
+            tournament_type=Tournament.TOURNAMENT_TYPE_CUP,
             max_players=2,
             registration_deadline=timezone.now() + timedelta(days=1)
         )
@@ -57,7 +58,7 @@ class ParticipantAPITests(APITestCase):
         resp = self.client.post(reverse('tournament-join', args=[self.tournament.id]))
         assert resp.status_code == status.HTTP_201_CREATED
 
-        # now original user cannot join
+        # now original user cannot join because tournament is full
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.token}')
         resp = self.client.post(reverse('tournament-join', args=[self.tournament.id]))
         assert resp.status_code == status.HTTP_400_BAD_REQUEST

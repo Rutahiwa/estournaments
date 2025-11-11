@@ -5,7 +5,7 @@ Handles serialization of Match objects for API responses.
 Includes read-only serializers for viewing matches and input serializers for result reporting.
 """
 from rest_framework import serializers
-from .models import Match, MatchReport
+from .models import Match, MatchReport, LeagueStanding
 from tournaments.models import Participant
 
 class ParticipantBriefSerializer(serializers.Serializer):
@@ -101,6 +101,7 @@ class MatchReportSerializer(serializers.ModelSerializer):
 class BracketRoundSerializer(serializers.Serializer):
     """Serializer for a single round in bracket view."""
     round_number = serializers.IntegerField()
+    round_name = serializers.CharField()
     matches = MatchSerializer(many=True)
 
 
@@ -111,4 +112,51 @@ class BracketSerializer(serializers.Serializer):
     """
     tournament_id = serializers.IntegerField()
     tournament_name = serializers.CharField()
+    tournament_type = serializers.CharField()
     rounds = BracketRoundSerializer(many=True)
+
+
+class LeagueStandingSerializer(serializers.ModelSerializer):
+    """
+    Serializer for individual league standings.
+    Calculates and returns participant standings in the league.
+    """
+    position = serializers.SerializerMethodField()
+    participant = serializers.SerializerMethodField()
+    points = serializers.SerializerMethodField()
+    goal_difference = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = LeagueStanding
+        fields = ('position', 'participant', 'played', 'won', 'drew', 'lost', 'goals_for', 'goals_against', 'goal_difference', 'points')
+        read_only_fields = fields
+    
+    def get_position(self, obj):
+        """Get position by ordering by points desc, then goal_difference desc."""
+        standings = LeagueStanding.objects.filter(tournament=obj.tournament).order_by('-points', '-goal_difference', '-goals_for')
+        return list(standings.values_list('id', flat=True)).index(obj.id) + 1
+    
+    def get_participant(self, obj):
+        """Serialize participant information."""
+        return ParticipantBriefSerializer(obj.participant).data
+    
+    def get_points(self, obj):
+        """Return the points of the league standing."""
+        return obj.points
+    
+    def get_goal_difference(self, obj):
+        """Return the goal difference of the league standing."""
+        return obj.goal_difference
+
+
+class LeagueStandingsSerializer(serializers.Serializer):
+    """
+    Serializer for tournament league standings.
+    Returns all standings for a tournament, including final status flags.
+    """
+    tournament_id = serializers.IntegerField()
+    tournament_name = serializers.CharField()
+    tournament_type = serializers.CharField()
+    standings = LeagueStandingSerializer(many=True)
+    all_matches_completed = serializers.BooleanField()
+    final_standings = serializers.BooleanField()

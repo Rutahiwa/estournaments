@@ -14,7 +14,8 @@ from .views import (
     StartTournamentView,
     ReportScoreView,
     OrganizerResolveView,
-    BracketView
+    BracketView,
+    LeagueStandingsView,
 )
 
 urlpatterns = [
@@ -33,4 +34,7 @@ urlpatterns = [
     
     # Bracket visualization
     path('tournaments/<int:tournament_pk>/bracket/', BracketView.as_view(), name='tournament-bracket'),
+    
+    # League standings
+    path('tournaments/<int:tournament_pk>/standings/', LeagueStandingsView.as_view(), name='tournament-standings'),
 ]
