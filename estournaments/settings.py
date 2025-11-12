@@ -42,8 +42,27 @@ INSTALLED_APPS = [
     'users',
     'tournaments',
     'matches',
+    'drf_spectacular',
+    'drf_spectacular_sidecar',
 ]
 
+REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+}
+
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'estournaments API',
+    'DESCRIPTION': 'Backend API for the estournaments platform — users, tournaments, matches.',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,  # avoid schema appearing twice
+    'SERVERS': [
+        {'url': 'http://127.0.0.1:8000', 'description': 'Local development'},
+    ],
+}
 AUTH_USER_MODEL = 'users.User'
 
 
@@ -129,11 +148,6 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
-}
 
 # ============ EMAIL CONFIGURATION ============
 # Development: emails print to console
