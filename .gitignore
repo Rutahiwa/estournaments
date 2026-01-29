@@ -4,3 +4,6 @@ __pycache__/
 
 # Local database
 db.sqlite3
+
+# Virtual environment
+venv/
