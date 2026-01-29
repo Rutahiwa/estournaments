@@ -1,0 +1,13 @@
+# Core framework
+Django>=5.2
+djangorestframework>=3.14
+
+# JWT authentication
+djangorestframework-simplejwt>=5.0
+
+# API documentation
+drf-spectacular>=0.28
+drf-spectacular-sidecar>=2024.11
+
+requests
+python-dotenv
